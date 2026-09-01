@@ -30,11 +30,20 @@ MANIFEST
 *.manifest
 *.spec
 
-# Test artifacts
-data/test_*.db
-data/test_*.csv
-data/test_*.xlsx
-.pytest_cache/
+# Local application data, generated student files & databases
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+data/backups/*
+data/qr_cards/*
+data/exports/*
+data/test_*
+*.log
+
+# Keep directory structures intact with .gitkeep if needed
+!data/backups/.gitkeep
+!data/qr_cards/.gitkeep
+!data/exports/.gitkeep
 
 # Environments
 .env
@@ -45,7 +54,7 @@ ENV/
 env.bak/
 venv.bak/
 
-# IDE files
+# IDE & Editor files
 .vscode/
 .idea/
 *.swp

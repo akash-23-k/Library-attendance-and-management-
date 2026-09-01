@@ -63,7 +63,7 @@ class StudentScreen(ctk.CTkFrame):
         students = list_students(query=q if q else None, status_filter=status)
 
         if not students:
-            ctk.CTkLabel(self.table_body, text="No students match the criteria.", text_color=COLOR_MUTED).pack(pady=30)
+            ctk.CTkLabel(self.table_body, text="No students match the search criteria.", text_color=COLOR_MUTED).pack(pady=30)
             return
 
         for std in students:
@@ -90,16 +90,19 @@ class StudentScreen(ctk.CTkFrame):
             ctk.CTkButton(btn_box, text=toggle_text, width=80, height=26, font=ctk.CTkFont(size=11), fg_color="#334155", hover_color="#475569", command=lambda s=std: self.toggle_status(s["student_id"])).pack(side="left", padx=2)
 
     def toggle_status(self, student_id: str):
-        toggle_student_status(student_id)
-        self.refresh_table()
-        self.app.screens["dashboard"].refresh_data()
-        self.app.screens["seats"].refresh_grid()
+        try:
+            toggle_student_status(student_id)
+            self.refresh_table()
+            self.app.screens["dashboard"].refresh_data()
+            self.app.screens["seats"].refresh_grid()
+        except Exception as e:
+            ctk.CTkMessagebox(title="Error", message=str(e), icon="cancel")
 
     def show_qr_card(self, std: dict):
         """Open high-res student passcard preview dialog."""
         modal = ctk.CTkToplevel(self)
         modal.title(f"QR Attendance Pass - {std['full_name']}")
-        modal.geometry("440x620")
+        modal.geometry("440x630")
         modal.resizable(False, False)
         modal.grab_set()
 
@@ -119,18 +122,18 @@ class StudentScreen(ctk.CTkFrame):
 
         def on_print():
             msg_win = ctk.CTkToplevel(modal)
-            msg_win.geometry("300x120")
+            msg_win.geometry("320x130")
             msg_win.title("Print Sent")
-            ctk.CTkLabel(msg_win, text=f"Card sent to default printer:\n{card_path.name}", font=ctk.CTkFont(size=12)).pack(pady=20)
+            ctk.CTkLabel(msg_win, text=f"Card saved and ready for printing:\n{card_path.name}", font=ctk.CTkFont(size=12)).pack(pady=20)
             ctk.CTkButton(msg_win, text="OK", width=80, command=msg_win.destroy).pack()
 
-        ctk.CTkButton(action_box, text="🖨️ Print Pass Card", fg_color=COLOR_PRIMARY, font=ctk.CTkFont(weight="bold"), command=on_print).pack(side="left", fill="x", expand=True, padx=4)
+        ctk.CTkButton(action_box, text="🖨️ Print / Save Pass", fg_color=COLOR_PRIMARY, font=ctk.CTkFont(weight="bold"), command=on_print).pack(side="left", fill="x", expand=True, padx=4)
         ctk.CTkButton(action_box, text="Close", fg_color="#334155", command=modal.destroy).pack(side="left", fill="x", expand=True, padx=4)
 
     def open_add_modal(self):
         modal = ctk.CTkToplevel(self)
         modal.title("Register New Student")
-        modal.geometry("450x480")
+        modal.geometry("450x490")
         modal.resizable(False, False)
         modal.grab_set()
 
@@ -147,13 +150,13 @@ class StudentScreen(ctk.CTkFrame):
         phone_entry = ctk.CTkEntry(form, placeholder_text="e.g. +91 98765 00000")
         phone_entry.pack(fill="x", pady=(0, 8))
 
-        ctk.CTkLabel(form, text="Assign Desk / Seat", font=ctk.CTkFont(weight="bold")).pack(anchor="w", pady=(5, 2))
+        ctk.CTkLabel(form, text="Assign Study Desk / Seat", font=ctk.CTkFont(weight="bold")).pack(anchor="w", pady=(5, 2))
         available_seats = get_available_seats()
         seat_options = ["(Leave Unassigned)"] + [f"{s['seat_number']} - {s['zone']}" for s in available_seats]
         seat_menu = ctk.CTkOptionMenu(form, values=seat_options)
         seat_menu.pack(fill="x", pady=(0, 8))
 
-        ctk.CTkLabel(form, text="Notes / Exam Batch", font=ctk.CTkFont(weight="bold")).pack(anchor="w", pady=(5, 2))
+        ctk.CTkLabel(form, text="Notes / Exam Batch (Optional)", font=ctk.CTkFont(weight="bold")).pack(anchor="w", pady=(5, 2))
         notes_entry = ctk.CTkEntry(form, placeholder_text="e.g. UPSC / Morning Shift")
         notes_entry.pack(fill="x", pady=(0, 8))
 

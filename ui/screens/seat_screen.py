@@ -21,9 +21,9 @@ class SeatScreen(ctk.CTkFrame):
         legend = ctk.CTkFrame(top, fg_color="transparent")
         legend.pack(side="right", padx=15, pady=10)
 
-        self._add_legend_item(legend, "● Present", COLOR_SUCCESS)
+        self._add_legend_item(legend, "● Present (In Study)", COLOR_SUCCESS)
         self._add_legend_item(legend, "● Assigned (Away)", "#818cf8")
-        self._add_legend_item(legend, "● Vacant", "#475569")
+        self._add_legend_item(legend, "● Vacant", "#64748b")
 
         # Scrollable Grid Area
         self.scroll_area = ctk.CTkScrollableFrame(self, fg_color="transparent")
@@ -74,7 +74,7 @@ class SeatScreen(ctk.CTkFrame):
 
     def _render_seat_box(self, parent, row, col, seat_code, data):
         st = data["status"]
-        if st == "OCCUPIED":
+        if st in ("PRESENT", "OCCUPIED"):
             bg = "#064e3b"
             border = COLOR_SUCCESS
             badge_txt = "IN STUDY"
@@ -96,6 +96,6 @@ class SeatScreen(ctk.CTkFrame):
         ctk.CTkLabel(box, text=seat_code, font=ctk.CTkFont(family="Courier", size=11, weight="bold")).pack(pady=(4, 0))
         
         name_txt = data["student"]["full_name"] if data["student"] else "--"
-        ctk.CTkLabel(box, text=name_txt, font=ctk.CTkFont(size=10), text_color="#ffffff" if data["student"] else "#64748b").pack()
+        ctk.CTkLabel(box, text=name_txt, font=ctk.CTkFont(size=10, weight="bold" if data["student"] else "normal"), text_color="#ffffff" if data["student"] else "#64748b").pack()
         
         ctk.CTkLabel(box, text=badge_txt, font=ctk.CTkFont(size=9, weight="bold"), text_color=badge_color).pack(pady=(0, 4))

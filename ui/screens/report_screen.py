@@ -1,8 +1,8 @@
 import customtkinter as ctk
 from pathlib import Path
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
 from services.report_service import get_student_summary_dataframe, export_attendance_to_excel, export_attendance_to_csv
-from ui.theme import COLOR_PRIMARY, COLOR_SUCCESS, COLOR_BG_CARD, COLOR_MUTED
+from ui.theme import COLOR_PRIMARY, COLOR_SUCCESS, COLOR_DANGER, COLOR_BG_CARD, COLOR_MUTED
 
 class ReportScreen(ctk.CTkFrame):
     def __init__(self, parent, app):
@@ -18,7 +18,7 @@ class ReportScreen(ctk.CTkFrame):
         title_box = ctk.CTkFrame(top, fg_color="transparent")
         title_box.pack(side="left", padx=15, pady=10)
         ctk.CTkLabel(title_box, text="📈 Attendance Reports & Data Export", font=ctk.CTkFont(size=18, weight="bold")).pack(anchor="w")
-        ctk.CTkLabel(title_box, text="Export comprehensive student-wise attendance logs directly to Microsoft Excel or CSV.", font=ctk.CTkFont(size=12), text_color=COLOR_MUTED).pack(anchor="w")
+        ctk.CTkLabel(title_box, text="Export comprehensive student-wise attendance logs directly to Microsoft Excel (.xlsx) or CSV.", font=ctk.CTkFont(size=12), text_color=COLOR_MUTED).pack(anchor="w")
 
         btn_box = ctk.CTkFrame(top, fg_color="transparent")
         btn_box.pack(side="right", padx=15, pady=10)
@@ -39,7 +39,8 @@ class ReportScreen(ctk.CTkFrame):
         ctk.CTkLabel(th, text="TOKEN", width=110, font=ctk.CTkFont(size=11, weight="bold"), text_color=COLOR_MUTED).pack(side="left", padx=5)
         ctk.CTkLabel(th, text="SEAT", width=80, font=ctk.CTkFont(size=11, weight="bold"), text_color=COLOR_MUTED).pack(side="left", padx=5)
         ctk.CTkLabel(th, text="DAYS PRESENT", width=110, font=ctk.CTkFont(size=11, weight="bold"), text_color=COLOR_MUTED).pack(side="left", padx=5)
-        ctk.CTkLabel(th, text="TOTAL SCANS", width=110, font=ctk.CTkFont(size=11, weight="bold"), text_color=COLOR_MUTED).pack(side="left", padx=5)
+        ctk.CTkLabel(th, text="CHECK-INS", width=90, font=ctk.CTkFont(size=11, weight="bold"), text_color=COLOR_MUTED).pack(side="left", padx=5)
+        ctk.CTkLabel(th, text="CHECK-OUTS", width=90, font=ctk.CTkFont(size=11, weight="bold"), text_color=COLOR_MUTED).pack(side="left", padx=5)
         ctk.CTkLabel(th, text="LAST SEEN", width=160, font=ctk.CTkFont(size=11, weight="bold"), text_color=COLOR_MUTED).pack(side="right", padx=15)
 
         self.summary_body = ctk.CTkScrollableFrame(content_card, fg_color="transparent")
@@ -64,17 +65,28 @@ class ReportScreen(ctk.CTkFrame):
             ctk.CTkLabel(r_frame, text=str(row["Student Token"]), width=110, font=ctk.CTkFont(family="Courier", size=11), text_color="#818cf8").pack(side="left", padx=5)
             ctk.CTkLabel(r_frame, text=f"Seat {row['Assigned Seat']}", width=80, font=ctk.CTkFont(family="Courier", size=11), text_color="#c7d2fe").pack(side="left", padx=5)
             ctk.CTkLabel(r_frame, text=f"{row['Days Present']} Days", width=110, font=ctk.CTkFont(size=11, weight="bold"), text_color=COLOR_SUCCESS).pack(side="left", padx=5)
-            ctk.CTkLabel(r_frame, text=f"{row['Total Scans']} Scans", width=110, font=ctk.CTkFont(size=11)).pack(side="left", padx=5)
+            ctk.CTkLabel(r_frame, text=str(row.get("Check-Ins", "--")), width=90, font=ctk.CTkFont(size=11)).pack(side="left", padx=5)
+            ctk.CTkLabel(r_frame, text=str(row.get("Check-Outs", "--")), width=90, font=ctk.CTkFont(size=11)).pack(side="left", padx=5)
             ctk.CTkLabel(r_frame, text=str(row["Last Seen"]).split(".")[0], width=160, font=ctk.CTkFont(family="Courier", size=11), text_color=COLOR_MUTED).pack(side="right", padx=15)
 
     def export_excel(self):
         file_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel Workbook", "*.xlsx")])
         if file_path:
-            out = export_attendance_to_excel(Path(file_path))
-            self.status_banner.configure(text=f"✓ Excel report exported successfully: {Path(out).name}")
+            try:
+                out = export_attendance_to_excel(Path(file_path))
+                self.status_banner.configure(text=f"✓ Excel report exported successfully: {Path(out).name}", text_color=COLOR_SUCCESS)
+                messagebox.showinfo("Export Successful", f"Excel report saved successfully:\n{out}")
+            except Exception as e:
+                self.status_banner.configure(text=f"Export failed: {str(e)}", text_color=COLOR_DANGER)
+                messagebox.showerror("Export Failed", str(e))
 
     def export_csv(self):
         file_path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV File", "*.csv")])
         if file_path:
-            out = export_attendance_to_csv(Path(file_path))
-            self.status_banner.configure(text=f"✓ CSV report exported successfully: {Path(out).name}")
+            try:
+                out = export_attendance_to_csv(Path(file_path))
+                self.status_banner.configure(text=f"✓ CSV report exported successfully: {Path(out).name}", text_color=COLOR_SUCCESS)
+                messagebox.showinfo("Export Successful", f"CSV report saved successfully:\n{out}")
+            except Exception as e:
+                self.status_banner.configure(text=f"Export failed: {str(e)}", text_color=COLOR_DANGER)
+                messagebox.showerror("Export Failed", str(e))

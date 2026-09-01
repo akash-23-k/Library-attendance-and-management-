@@ -6,8 +6,8 @@ from PIL import Image
 
 class CameraScannerService:
     """
-    Background worker that grabs webcam frames and decodes QR codes.
-    Thread-safe with callback for UI frame rendering and decoded QR token.
+    Background thread worker for capturing webcam frames and decoding QR tokens.
+    Thread-safe and handles missing camera hardware gracefully without UI freezing.
     """
     def __init__(self, camera_index: int = 0):
         self.camera_index = camera_index
@@ -21,6 +21,7 @@ class CameraScannerService:
         self.status_callback: Optional[Callable[[str], None]] = None
 
     def start(self, frame_callback: Optional[Callable] = None, qr_callback: Optional[Callable] = None, status_callback: Optional[Callable] = None):
+        """Start the background video capture and QR decoding loop."""
         if self.is_running:
             return
 
@@ -34,10 +35,9 @@ class CameraScannerService:
 
     def _capture_loop(self):
         try:
-            # Try DirectShow on Windows for fastest hardware initialization
+            # DirectShow on Windows avoids camera startup delays
             self.cap = cv2.VideoCapture(self.camera_index, cv2.CAP_DSHOW)
             if not self.cap or not self.cap.isOpened():
-                # Fallback to default
                 self.cap = cv2.VideoCapture(self.camera_index)
 
             if not self.cap.isOpened():
@@ -48,7 +48,6 @@ class CameraScannerService:
             if self.status_callback:
                 self.status_callback("RUNNING")
 
-            # Set resolution for fast response
             self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
             self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
@@ -59,21 +58,35 @@ class CameraScannerService:
                     continue
 
                 # QR Decoding
-                data, bbox, _ = self.detector.detectAndDecode(frame)
-                if data and data.strip():
-                    if self.qr_callback:
-                        self.qr_callback(data.strip())
+                try:
+                    data, bbox, _ = self.detector.detectAndDecode(frame)
+                    if data and data.strip():
+                        if self.qr_callback and self.is_running:
+                            self.qr_callback(data.strip())
+                except Exception:
+                    pass
 
-                # Draw targeting overlay box on frame
+                # Draw targeting guide reticle
                 h, w, _ = frame.shape
-                box_size = 200
+                box_size = 220
                 top_left = ((w - box_size) // 2, (h - box_size) // 2)
                 bottom_right = (top_left[0] + box_size, top_left[1] + box_size)
                 
-                # Laser color or targeting corners
-                cv2.rectangle(frame, top_left, bottom_right, (79, 70, 229), 2)  # Indigo
-                
-                # Convert BGR to RGB for Tkinter/Pillow
+                # Corner reticles
+                corner_len = 24
+                cv2.line(frame, top_left, (top_left[0] + corner_len, top_left[1]), (79, 70, 229), 3)
+                cv2.line(frame, top_left, (top_left[0], top_left[1] + corner_len), (79, 70, 229), 3)
+
+                cv2.line(frame, (bottom_right[0], top_left[1]), (bottom_right[0] - corner_len, top_left[1]), (79, 70, 229), 3)
+                cv2.line(frame, (bottom_right[0], top_left[1]), (bottom_right[0], top_left[1] + corner_len), (79, 70, 229), 3)
+
+                cv2.line(frame, (top_left[0], bottom_right[1]), (top_left[0] + corner_len, bottom_right[1]), (79, 70, 229), 3)
+                cv2.line(frame, (top_left[0], bottom_right[1]), (top_left[0], bottom_right[1] - corner_len), (79, 70, 229), 3)
+
+                cv2.line(frame, bottom_right, (bottom_right[0] - corner_len, bottom_right[1]), (79, 70, 229), 3)
+                cv2.line(frame, bottom_right, (bottom_right[0], bottom_right[1] - corner_len), (79, 70, 229), 3)
+
+                # Convert BGR to RGB for UI
                 rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 pil_img = Image.fromarray(rgb_frame)
 
@@ -90,6 +103,7 @@ class CameraScannerService:
                 self.cap.release()
 
     def stop(self):
+        """Safely release webcam hardware and terminate background thread."""
         self.is_running = False
         if self.thread and self.thread.is_alive():
             self.thread.join(timeout=1.0)

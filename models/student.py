@@ -2,10 +2,19 @@ from dataclasses import dataclass
 from typing import Optional
 
 @dataclass
+class Admin:
+    admin_id: Optional[int]
+    username: str
+    password_hash: str
+    status: str = 'ACTIVE'
+    created_at: Optional[str] = None
+
+@dataclass
 class Student:
     student_id: str
     full_name: str
     phone: Optional[str] = None
+    joining_date: Optional[str] = None
     assigned_seat: Optional[str] = None
     status: str = 'ACTIVE'
     notes: Optional[str] = None
@@ -19,6 +28,7 @@ class Seat:
     zone: str
     status: str = 'AVAILABLE'
     created_at: Optional[str] = None
+    updated_at: Optional[str] = None
 
 @dataclass
 class AttendanceEvent:
