@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Library Attendance System - Interactive UI Prototype</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    /* Smooth transitions and custom scrollbars */
+    * { box-sizing: border-box; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--card, rgba(0,0,0,0.05)); }
+    ::-webkit-scrollbar-thumb { background: var(--border, #cbd5e1); border-radius: 4px; }
+    
+    @keyframes scanline {
+      0% { top: 0%; opacity: 0.8; }
+      50% { opacity: 1; }
+      100% { top: 100%; opacity: 0.8; }
+    }
+    .scan-laser {
+      animation: scanline 2.2s ease-in-out infinite alternate;
+    }
+    @keyframes pulseSuccess {
+      0% { transform: scale(0.98); opacity: 0.7; }
+      50% { transform: scale(1.02); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .pulse-card {
+      animation: pulseSuccess 0.4s ease-out;
+    }
+  </style>
+</head>
+<body class="bg-[var(--background,#f8fafc)] text-[var(--foreground,#0f172a)] antialiased font-sans min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
+
+  <!-- TOP HEADER / APP BAR -->
+  <header class="bg-[var(--card,#ffffff)] border-b border-[var(--border,#e2e8f0)] sticky top-0 z-30 px-6 py-3 flex items-center justify-between shadow-sm">
+    <div class="flex items-center space-x-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center text-white font-bold shadow-md shadow-indigo-200 text-lg">
+        📚
+      </div>
+      <div>
+        <div class="flex items-center space-x-2">
+          <h1 class="font-bold text-base md:text-lg text-[var(--foreground,#0f172a)] tracking-tight">StudySpace Manager</h1>
+          <span class="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 rounded-full">Offline MVP v1.0</span>
+        </div>
+        <p class="text-xs text-[var(--muted-foreground,#64748b)]">Apex Central Study Library & Reading Hall</p>
+      </div>
+    </div>
+
+    <!-- Live Status & Quick Meta -->
+    <div class="flex items-center space-x-4">
+      <div class="hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-[var(--background,#f1f5f9)] border border-[var(--border,#e2e8f0)] text-xs">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span class="font-medium text-[var(--foreground,#334155)]" id="live-clock">--:--:--</span>
+        <span class="text-[var(--muted-foreground,#94a3b8)]">|</span>
+        <span class="text-[var(--muted-foreground,#64748b)]">Webcam: <span class="text-emerald-600 font-semibold">USB HD Cam</span></span>
+      </div>
+
+      <div class="flex items-center space-x-2 border-l border-[var(--border,#e2e8f0)] pl-4">
+        <div class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-bold flex items-center justify-center text-xs">
+          AD
+        </div>
+        <div class="hidden md:block text-left">
+          <div class="text-xs font-semibold text-[var(--foreground,#1e293b)]">Admin (Owner)</div>
+          <div class="text-[10px] text-emerald-600 font-medium">● Local Storage Active</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN APP CONTAINER -->
+  <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
+    
+    <!-- SIDEBAR NAVIGATION -->
+    <aside class="w-full md:w-64 bg-[var(--card,#ffffff)] border-r border-[var(--border,#e2e8f0)] flex-shrink-0 p-4 flex md:flex-col justify-between">
+      <nav class="space-y-1 w-full flex md:flex-col overflow-x-auto md:overflow-visible pb-2 md:pb-0 gap-1 md:gap-0">
+        <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn active flex items-center space-x-3 w-full px-3.5 py-2.5 rounded-lg text-sm font-medium transition text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 dark:text-indigo-300">
+          <span class="text-lg">📊</span>
+          <span class="whitespace-nowrap">Dashboard</span>
+        </button>
+        <button onclick="switchTab('scanner')" id="nav-scanner" class="nav-btn flex items-center justify-between w-full px-3.5 py-2.5 rounded-lg text-sm font-medium transition text-[var(--muted-foreground,#64748b)] hover:bg-[var(--background,#f1f5f9)] hover:text-[var(--foreground,#0f172a)]">
+          <div class="flex items-center space-x-3">
+            <span class="text-lg">📷</span>
+            <span class="whitespace-nowrap">QR Scanner</span>
+          </div>
+          <span class="bg-indigo-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded uppercase">Live</span>
+        </button>
+        <button onclick="switchTab('students')" id="nav-students" class="nav-btn flex items-center space-x-3 w-full px-3.5 py-2.5 rounded-lg text-sm font-medium transition text-[var(--muted-foreground,#64748b)] hover:bg-[var(--background,#f1f5f9)] hover:text-[var(--foreground,#0f172a)]">
+          <span class="text-lg">🎓</span>
+          <span class="whitespace-nowrap">Students & QR</span>
+        </button>
+        <button onclick="switchTab('seats')" id="nav-seats" class="nav-btn flex items-center space-x-3 w-full px-3.5 py-2.5 rounded-lg text-sm font-medium transition text-[var(--muted-foreground,#64748b)] hover:bg-[var(--background,#f1f5f9)] hover:text-[var(--foreground,#0f172a)]">
+          <span class="text-lg">🪑</span>
+          <span class="whitespace-nowrap">Seat Matrix</span>
+        </button>
+        <button onclick="switchTab('attendance')" id="nav-attendance" class="nav-btn flex items-center space-x-3 w-full px-3.5 py-2.5 rounded-lg text-sm font-medium transition text-[var(--muted-foreground,#64748b)] hover:bg-[var(--background,#f1f5f9)] hover:text-[var(--foreground,#0f172a)]">
+          <span class="text-lg">📋</span>
+          <span class="whitespace-nowrap">Attendance Log</span>
+        </button>
+        <button onclick="switchTab('reports')" id="nav-reports" class="nav-btn flex items-center space-x-3 w-full px-3.5 py-2.5 rounded-lg text-sm font-medium transition text-[var(--muted-foreground,#64748b)] hover:bg-[var(--background,#f1f5f9)] hover:text-[var(--foreground,#0f172a)]">
+          <span class="text-lg">📈</span>
+          <span class="whitespace-nowrap">Reports & Export</span>
+        </button>
+        <button onclick="switchTab('settings')" id="nav-settings" class="nav-btn flex items-center space-x-3 w-full px-3.5 py-2.5 rounded-lg text-sm font-medium transition text-[var(--muted-foreground,#64748b)] hover:bg-[var(--background,#f1f5f9)] hover:text-[var(--foreground,#0f172a)]">
+          <span class="text-lg">⚙️</span>
+          <span class="whitespace-nowrap">Settings & Backup</span>
+        </button>
+      </nav>
+
+      <!-- System Quick Health Box -->
+      <div class="hidden md:block bg-[var(--background,#f8fafc)] border border-[var(--border,#e2e8f0)] rounded-xl p-3 text-xs space-y-2 mt-4">
+        <div class="flex justify-between items-center text-[var(--muted-foreground,#64748b)]">
+          <span>Database (SQLite)</span>
+          <span class="text-emerald-600 font-semibold">Healthy</span>
+        </div>
+        <div class="flex justify-between items-center text-[var(--muted-foreground,#64748b)]">
+          <span>Backup Status</span>
+          <span class="text-indigo-600 font-semibold">Today, 04:00 PM</span>
+        </div>
+        <div class="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
+          <div class="bg-indigo-600 h-full w-4/5"></div>
+        </div>
+        <p class="text-[10px] text-[var(--muted-foreground,#94a3b8)]">Capacity: 48 / 60 Seats in use (80%)</p>
+      </div>
+    </aside>
+
+    <!-- CONTENT AREA -->
+    <main class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+
+      <!-- TAB 1: DASHBOARD -->
+      <section id="tab-dashboard" class="tab-content space-y-6">
+        <!-- Banner & Quick Action -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-indigo-900 to-slate-900 text-white rounded-2xl p-6 shadow-lg relative overflow-hidden">
+          <div class="relative z-10 space-y-1">
+            <h2 class="text-2xl font-bold tracking-tight">Today's Study Space Overview</h2>
+            <p class="text-indigo-200 text-sm">Real-time attendance monitor and seat occupancy status.</p>
+          </div>
+          <div class="relative z-10 flex flex-wrap gap-2">
+            <button onclick="switchTab('scanner')" class="px-4 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl text-sm font-semibold shadow-md flex items-center space-x-2 transition">
+              <span>📷</span>
+              <span>Launch Live Scanner</span>
+            </button>
+            <button onclick="openAddStudentModal()" class="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-xl text-sm font-semibold transition flex items-center space-x-2">
+              <span>➕</span>
+              <span>New Student</span>
+            </button>
+          </div>
+          <div class="absolute -right-10 -bottom-10 w-48 h-48 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
+        </div>
+
+        <!-- Metric KPI Cards -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="bg-[var(--card,#ffffff)] border border-[var(--border,#e2e8f0)] rounded-xl p-4 shadow-sm hover:shadow transition">
+            <div class="flex justify-between items-start text-indigo-600 mb-2">
+              <span class="text-2xl">👥</span>
+              <span class="text-xs font-semibold px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-full">Total Active</span>
+            </div>
+            <div class="text-2xl md:text-3xl font-extrabold text-[var(--foreground,#0f172a)]" id="kpi-total-students">64</div>
+            <div class="text-xs text-[var(--muted-foreground,#64748b)] mt-1">Enrolled Library Members</div>
+          </div>
+
+          <div class="bg-[var(--card,#ffffff)] border border-[var(--border,#e2e8f0)] rounded-xl p-4 shadow-sm hover:shadow transition">
+            <div class="flex justify-between items-start text-emerald-600 mb-2">
+              <span class="text-2xl">🟢</span>
+              <span class="text-xs font-semibold px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full">Present Now</span>
+            </div>
+            <div class="text-2xl md:text-3xl font-extrabold text-emerald-600" id="kpi-present-count">38</div>
+            <div class="text-xs text-[var(--muted-foreground,#64748b)] mt-1">Currently Checked-in</div>
+          </div>
+
+          <div class="bg-[var(--card,#ffffff)] border border-[var(--border,#e2e8f0)] rounded-xl p-4 shadow-sm hover:shadow transition">
+            <div class="flex justify-between items-start text-amber-600 mb-2">
+              <span class="text-2xl">🪑</span>
+              <span class="text-xs font-semibold px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full">Occupancy</span>
+            </div>
+            <div class="text-2xl md:text-3xl font-extrabold text-[var(--foreground,#0f172a)]">76%</div>
+            <div class="text-xs text-[var(--muted-foreground,#64748b)] mt-1">38 of 50 Assigned Seats</div>
+          </div>
+
+          <div class="bg-[var(--card,#ffffff)] border border-[var(--border,#e2e8f0)] rounded-xl p-4 shadow-sm hover:shadow transition">
+            <div class="flex justify-between items-start text-violet-600 mb-2">
+              <span class="text-2xl">⚡</span>
+              <span class="text-xs font-semibold px-2 py-0.5 bg-violet-50 text-violet-700 rounded-full">Scans Today</span>
+            </div>
+            <div class="text-2xl md:text-3xl font-extrabold text-[var(--foreground,#0f172a)]" id="kpi-scans-count">74</div>
+            <div class="text-xs text-[var(--muted-foreground,#64748b)] mt-1">Check-in & Check-outs</div>
+          </div>
+        </div>
+
+        <!-- Two Column Section: Recent Scans & Quick Seat Map Preview -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          <!-- Recent Attendance Live Feed -->
+          <div class="lg:col-span-2 bg-[var(--card,#ffffff)] border border-[var(--border,#e2e8f0)] rounded-xl p-5 shadow-sm space-y-4">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                <h3 class="font-bold text-base text-[var(--foreground,#0f172a)]">Recent Scan Activity (Today)</h3>
+              </div>
+              <button onclick="switchTab('attendance')" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800">View Full Log →</button>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-[var(--background,#f8fafc)] text-[var(--muted-foreground,#64748b)] font-semibold border-b border-[var(--border,#e2e8f0)]">
+                  <tr>
+                    <th class="p-2.5">Time</th>
+                    <th class="p-2.5">Student</th>
+                    <th class="p-2.5">Seat</th>
+                    <th class="p-2.5">Event</th>
+                    <th class="p-2.5">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="dashboard-recent-scans" class="divide-y divide-[var(--border,#e2e8f0)] text-[var(--foreground,#1e293b)]">
+                  <!-- Injected by JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Quick Seat Occupancy Visualizer Mini -->
+          <div class="bg-[var(--card,#ffffff)] border border-[var(--border,#e2e8f0)] rounded-xl p-5 shadow-sm flex flex-col justify-between space-y-4">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <h3 class="font-bold text-base text-[var(--foreground,#0f172a)]">Quick Seat Matrix</h3>
+                <button onclick="switchTab('seats')" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800">Manage →</button>
+              </div>
+              <p class="text-xs text-[var(--muted-foreground,#64748b)] mb-3">Green: Occupied | Gray: Vacant</p>
+              
+              <!-- Mini Seat Dots Grid -->
+              <div class="grid grid-cols-6 gap-2 p-3 bg-[var(--background,#f8fafc)] border border-[var(--border,#e2e8f0)] rounded-lg text-[10px] font-bold text-center">
+                <div class="p-2 bg-emerald-500 text-white rounded shadow-xs" title="Seat A1: Rahul Sharma">A1</div>
+                <div class="p-2 bg-emerald-500 text-white rounded shadow-xs" title="Seat A2: Priya Patel">A2</div>
+                <div class="p-2 bg-slate-200 text-slate-600 rounded" title="Seat A3: Vacant">A3</div>
+                <div class="p-2 bg-emerald-500 text-white rounded shadow-xs" title="Seat A4: Amit Roy">A4</div>
+                <div class="p-2 bg-slate-200 text-slate-600 rounded" title="Seat A5: Vacant">A5</div>
+                <div class="p-2 bg-emerald-500 text-white rounded shadow-xs" title="Seat A6: Neha Singh">A6</div>
+                <div class="p-2 bg-emerald-500 text-white rounded shadow-xs" title="Seat B1: Vikram Seth">B1</div>
+                <div class="p-2 bg-emerald-500 text-white rounded shadow-xs" title="Seat B2: Ananya Roy">B2</div>
+                <div class="p-2 bg-emerald-500 text-white rounded shadow-xs" title="Seat B3: Rohan Gupta">B3</div>
+                <div class="p-2 bg-slate-200 text-slate-600 rounded" title="Seat B4: Vacant">B4</div>
+                <div class="p-2 bg-emerald-500 text-white rounded shadow-xs" title="Seat B5: Sneha Sen">B5</div>
+                <div class="p-2 bg-slate-200 text-slate-600 rounded" title="Seat B6: Vacant">B6</div>
+              </div>
+            </div>
+
+            <div class="pt-2 border-t border-[var(--border,#e2e8f0)] flex justify-between text-xs text-[var(--muted-foreground,#64748b)]">
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-emerald-500 rounded"></span> Occupied (38)</span>
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-slate-300 rounded"></span> Vacant (12)</span>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- TAB 2: LIVE QR SCANNER SCREEN (PRD FR-04, FR-05, FR-06) -->
+      <section id="tab-scanner" class="tab-content hidden space-y-6">
+        
+        <!-- Header & Mode Switcher -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[var(--card,#ffffff)] p-4 rounded-xl border border-[var(--border,#e2e8f0)]">
+          <div>
+            <h2 class="text-xl font-bold text-[var(--foreground,#0f172a)] flex items-center gap-2">
+              <span>📷</span> Live Attendance Scanner Station
+            </h2>
+            <p class="text-xs text-[var(--muted-foreground,#64748b)]">Point student QR code at the camera. Check-in and Check-out are recorded automatically.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="text-xs font-semibold text-[var(--muted-foreground,#64748b)]">Camera:</label>
+            <select id="camera-select" class="text-xs bg-[var(--background,#f1f5f9)] border border-[var(--border,#cbd5e1)] rounded-lg px-2.5 py-1.5 font-medium">
+              <option>USB HD Webcam 01 (Default)</option>
+              <option>Integrated Front Camera</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          <!-- SCANNER CAMERA PREVIEW (7 Cols) -->
+          <div class="lg:col-span-7 bg-[var(--card,#ffffff)] border border-[var(--border,#e2e8f0)] rounded-2xl p-5 shadow-sm flex flex-col space-y-4">
+            
+            <div class="relative bg-slate-950 rounded-xl overflow-hidden aspect-video flex flex-col items-center justify-center border-2 border-slate-800 shadow-inner">
+              
+              <!-- Simulated Video Frame / Scan Zone -->
+              <div class="absolute inset-0 flex items-center justify-center">
+                <div class="relative w-56 h-56 border-2 border-dashed border-indigo-400/70 rounded-2xl flex flex-col items-center justify-center bg-indigo-950/20 backdrop-blur-xs">
+                  <!-- Corner Guides -->
+                  <div class="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-indigo-500 rounded-tl-lg"></div>
+                  <div class="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-indigo-500 rounded-tr-lg"></div>
+                  <div class="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-indigo-500 rounded-bl-lg"></div>
+                  <div class="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-indigo-500 rounded-br-lg"></div>
+                  
+                  <!-- Scan laser line -->
+                  <div class="absolute left-2 right-2 h-0.5 bg-gradient-to-r from-transparent via-red-500 to-transparent scan-laser shadow-lg shadow-red-500/50"></div>
+                  
+                  <span class="text-indigo-200/80 text-xs font-medium tracking-wide">ALIGN QR CODE HERE</span>
+                </div>
+              </div>
+
+              <!-- Camera Top Overlay Status -->
+              <div class="absolute top-3 left-3 flex items-center space-x-2 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-xs text-white">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                <span class="font-mono text-[11px]">WEBCAM ACTIVE • 30 FPS</span>
+              </div>
+
+              <div class="absolute bottom-3 left-3 right-3 flex justify-between items-center text-[11px] text-slate-400 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-lg font-mono">
+                <span>Duplicate Protection: 60s cooldown</span>
+                <span>Auto-Reset: Instant</span>
+              </div>
+            </div>
+
+            <!-- Scanner Controls & Test Trigger Bar -->
+            <div class="bg-[var(--background,#f8fafc)] border border-[var(--border,#e2e8f0)] rounded-xl p-3.5 space-y-2">
+              <div class="text-xs font-bold text-[var(--foreground,#334155)] flex justify-between items-center">
+                <span>🧪 Quick Test Scan Simulator (Demo / Operator Mode)</span>
+                <span class="text-[10px] text-indigo-600 font-normal">Click a sample student card below to trigger a live scan</span>
+              </div>
+              
+              <div class="flex flex-wrap gap-2">
+                <button onclick="simulateScan('LIB-8F4K2M')" class="px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:border-indigo-500 rounded-lg text-xs font-semibold text-slate-800 dark:text-slate-200 shadow-xs flex items-center gap-1.5 transition">
+                  <span>👤</span> Rahul Sharma (LIB-8F4K2M)
+                </button>
+                <button onclick="simulateScan('LIB-9G3M1P')" class="px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:border-indigo-500 rounded-lg text-xs font-semibold text-slate-800 dark:text-slate-200 shadow-xs flex items-center gap-1.5 transition">
+                  <span>👤</span> Priya Patel (LIB-9G3M1P)
+                </button>
+                <button onclick="simulateScan('LIB-2D8R5W')" class="px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:border-indigo-500 rounded-lg text-xs font-semibold text-slate-800 dark:text-slate-200 shadow-xs flex items-center gap-1.5 transition">
+                  <span>👤</span> Amit Roy (LIB-2D8R5W)
+                </button>
+                <button onclick="simulateScan('LIB-INVALID-QR')" class="px-2.5 py-1.5 bg-red-50 border border-red-200 hover:bg-red-100 rounded-lg text-xs font-semibold text-red-700 shadow-xs flex items-center gap-1.5 transition">
+                  <span>⚠️</span> Test Unregistered QR
+                </button>
+              </div>
+
+              <!-- Direct QR Code string input for hardware/barcode scanner input -->
+              <div class="pt-2 flex gap-2">
+                <input id="manual-qr-input" type="text" placeholder="Or enter / scan QR token (e.g. LIB-8F4K2M)..." class="flex-1 text-xs px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-indigo-500" onkeydown="if(event.key==='Enter') simulateScan(this.value)">
+                <button onclick="simulateScan(document.getElementById('manual-qr-input').value)" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold">Scan QR</button>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- SCAN RESULT NOTIFICATION & LAST SCANNED DETAILS (5 Cols) -->
+          <div class="lg:col-span-5 flex flex-col space-y-4">
+            
+            <!-- Result Alert Card (Interactive feedback) -->
+            <div id="scan-feedback-box" class="bg-emerald-50 dark:bg-emerald-950/40 border-2 border-emerald-500 rounded-2xl p-5 text-center shadow-md space-y-3 transition-all">
+              <div id="feedback-icon" class="w-14 h-14 mx-auto rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-600 text-2xl flex items-center justify-center font-bold">
+                ✓
+              </div>
+              <div>
+                <h3 id="feedback-title" class="text-xl font-extrabold text-emerald-800 dark:text-emerald-300">CHECK-IN SUCCESSFUL</h3>
+                <p id="feedback-msg" class="text-xs text-emerald-700 dark:text-emerald-400 mt-0.5">Attendance verified & recorded in SQLite database</p>
+              </div>
+
+              <!-- Student Detail Pill -->
+              <div id="feedback-student-card" class="bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800/60 rounded-xl p-4 text-left shadow-xs space-y-2">
+                <div class="flex justify-between items-center">
+                  <div>
+                    <div id="scan-name" class="font-bold text-base text-[var(--foreground,#0f172a)]">Rahul Sharma</div>
+                    <div id="scan-id" class="text-xs font-mono text-indigo-600">ID: LIB-8F4K2M</div>
+                  </div>
+                  <div class="text-right">
+                    <span id="scan-seat" class="px-3 py-1 bg-indigo-600 text-white font-extrabold text-sm rounded-lg shadow-xs">Seat A-12</span>
+                    <div id="scan-time" class="text-[10px] text-slate-500 mt-1 font-mono">07:45:12 PM</div>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-400">
+                  <div>Status: <span id="scan-event-type" class="font-semibold text-emerald-600">CHECK-IN (ENTRY)</span></div>
+                  <div>Phone: <span id="scan-phone" class="font-mono text-slate-800 dark:text-slate-200">+91 98765 43210</span></div>
+                </div>
+              </div>
+
+              <div class="text-[11px] text-emerald-700/80 font-medium animate-pulse">
+                Ready for next student... (Auto-listening)
+              </div>
+            </div>
+
+            <!-- Scanner Tips / Policies -->
+            <div class="bg-[var(--card,#ffffff)] border border-[var(--border,#e2e8f0)] rounded-xl p-4 space-y-2.5 text-xs text-[var(--muted-foreground,#64748b)]">
+              <h4 class="font-bold text-[var(--foreground,#1e293b)] flex items-center gap-1.5">
+                <span>ℹ️</span> Operational Guidelines
+              </h4>
+              <ul class="space-y-1.5 list-disc list-inside">
+                <li><strong>First Scan:</strong> Marks student Check-in for their allocated seat.</li>
+                <li><strong>Next Scan:</strong> Marks Check-out and calculates duration.</li>
+                <li><strong>Duplicate Scan:</strong> Ignored if scanned within 60 seconds of previous scan.</li>
+                <li><strong>Zero Internet:</strong> Scans save directly into local SQLite storage.</li>
+              </ul>
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      <!-- TAB 3: STUDENT MANAGEMENT & QR GENERATION (PRD FR-01, FR-03) -->
+      <section id="tab-students" class="tab-content hidden space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-xl font-bold text-[var(--foreground,#0f172a)]">Student Directory & QR Cards</h2>
+            <p class="text-xs text-[var(--muted-foreground,#64748b)]">Register students, assign permanent study seats, and print physical QR cards.</p>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="openAddStudentModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition">
+              <span>➕</span> Register New Student
+            </button>
+          </div>
+        </div>
+
+        <!-- Search & Filter Controls -->
+        <div class="bg-[var(--card,#ffffff)] border border-[var(--border,#e2e8f0)] rounded-xl p-4 flex flex-col sm:flex-row gap-3 items-center justify-between shadow-xs">
+          <div class="relative w-full sm:w-80">
+            <span class="absolute left-3 top-2.5 text-slate-400 text-xs">🔍</span>
+            <input id="student-search" type="text" placeholder="Search by name, ID or seat number..." class="w-full text-xs pl-8 pr-4 py-2 bg-[var(--background,#f8fafc)] border border-[var(--border,#cbd5e1)] rounded-lg focus:outline-indigo-500" oninput="filterStudents()">
+          </div>
+
+          <div class="flex items-center gap-2 w-full sm:w-auto">
+            <select id="student-status-filter" class="text-xs bg-[var(--background,#f8fafc)] border border-[var(--border,#cbd5e1)] rounded-lg px-3 py-2 font-medium" onchange="filterStudents()">
+              <option value="ALL">All Statuses</option>
+              <option value="ACTIVE">Active Students</option>
+              <option value="INACTIVE">Deactivated</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Student Table -->
+        <div class="bg-[var(--card,#ffffff)] border border-[var(--border,#e2e8f0)] rounded-xl shadow-sm overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-[var(--background,#f8fafc)] text-[var(--muted-foreground,#64748b)] font-semibold border-b border-[var(--border,#e2e8f0)]">
+                <tr>
+                  <th class="p-3.5">Student ID</th>
+                  <th class="p-3.5">Student Full Name</th>
+                  <th class="p-3.5">Contact</th>
+                  <th class="p-3.5">Assigned Seat</th>
+                  <th class="p-3.5">Joining Date</th>
+                  <th class="p-3.5">Status</th>
+                  <th class="p-3.5 text-right">Actions / QR</th>
+                </tr>
+              </thead>
+              <tbody id="student-table-body" class="divide-y divide-[var(--border,#e2e8f0)]">
+                <!-- Populated dynamically via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: SEAT MATRIX / LAYOUT (PRD FR-02) -->
+      <section id="tab-seats" class="tab-content hidden space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-xl font-bold text-[var(--foreground,#0f172a)]">Study Seat Matrix & Hall Layout</h2>
+            <p class="text-xs text-[var(--muted-foreground,#64748b)]">Interactive layout of all study desks with occupancy indicator.</p>
+          </div>
+          <div class="flex items-center space-x-3 text-xs">
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 bg-emerald-500 rounded"></span> Occupied (Present)</span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 bg-indigo-500 rounded"></span> Assigned (Away)</span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 bg-slate-200 rounded border border-slate-300"></span> Vacant</span>
+          </div>
+        </div>
+
+        <!-- Visual Seat Matrix -->
+        <div class="bg-[var(--card,#ffffff)] border border-[var(--border,#e2e8f0)] rounded-2xl p-6 shadow-sm space-y-6">
+          <div>
+            <h3 class="text-sm font-bold text-[var(--foreground,#1e293b)] uppercase tracking-wider mb-3">Zone A — Main Reading Hall</h3>
+            <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3" id="seat-grid-zone-a">
+              <!-- Seats A1-A24 generated by JS -->
+            </div>
+          </div>
+
+          <div class="pt-4 border-t border-[var(--border,#e2e8f0)]">
+            <h3 class="text-sm font-bold text-[var(--foreground,#1e293b)] uppercase tracking-wider mb-3">Zone B — Silent Cabin Desks</h3>
+            <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3" id="seat-grid-zone-b">
+              <!-- Seats B1-B24 generated by JS -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 5: ATTENDANCE HISTORY LOGS (PRD FR-05, FR-07) -->
+      <section id="tab-attendance" class="tab-content hidden space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-xl font-bold text-[var(--foreground,#0f172a)]">Attendance Audit Logs</h2>
+            <p class="text-xs text-[var(--muted-foreground,#64748b)]">Immutable historical record of every scan event with seat snapshot.</p>
+          </div>
+          <button onclick="exportAttendanceCSV()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs">
+            <span>📥</span> Export CSV Log
+          </button>
+        </div>
+
+        <!-- Filter bar -->
+        <div class="bg-[var(--card,#ffffff)] border border-[var(--border,#e2e8f0)] rounded-xl p-4 grid grid-cols-1 sm:grid-cols-4 gap-3 shadow-xs text-xs">
+          <div>
+            <label class="block font-medium text-[var(--muted-foreground,#64748b)] mb-1">Date</label>
+            <input type="date" value="2026-09-01" class="w-full bg-[var(--background,#f8fafc)] border border-[var(--border,#cbd5e1)] rounded-lg p-2 font-mono">
+          </div>
+          <div>
+            <label class="block font-medium text-[var(--muted-foreground,#64748b)] mb-1">Event Type</label>
+            <select class="w-full bg-[var(--background,#f8fafc)] border border-[var(--border,#cbd5e1)] rounded-lg p-2">
+              <option>All Events</option>
+              <option>Check-In Only</option>
+              <option>Check-Out Only</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-medium text-[var(--muted-foreground,#64748b)] mb-1">Seat Zone</label>
+            <select class="w-full bg-[var(--background,#f8fafc)] border border-[var(--border,#cbd5e1)] rounded-lg p-2">
+              <option>All Zones</option>
+              <option>Zone A</option>
+              <option>Zone B</option>
+            </select>
+          </div>
+          <div class="flex items-end">
+            <button class="w-full py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700">Apply Filter</button>
+          </div>
+        </div>
+
+        <!-- Logs Table -->
+        <div class="bg-[var(--card,#ffffff)] border border-[var(--border,#e2e8f0)] rounded-xl shadow-sm overflow-hidden">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-[var(--background,#f8fafc)] text-[var(--muted-foreground,#64748b)] font-semibold border-b border-[var(--border,#e2e8f0)]">
+              <tr>
+                <th class="p-3.5">Event ID</th>
+                <th class="p-3.5">Timestamp</th>
+                <th class="p-3.5">Student ID</th>
+                <th class="p-3.5">Name</th>
+                <th class="p-3.5">Seat Snapshot</th>
+                <th class="p-3.5">Event Type</th>
+                <th class="p-3.5">Device</th>
+              </tr>
+            </thead>
+            <tbody id="full-attendance-table-body" class="divide-y divide-[var(--border,#e2e8f0)] font-mono text-[11px]">
+              <!-- Injected by JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- TAB 6: REPORTS & EXCEL EXPORT (PRD FR-07, FR-08) -->
+      <section id="tab-reports" class="tab-content hidden space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-xl font-bold text-[var(--foreground,#0f172a)]">Attendance Reports & Exports</h2>
+            <p class="text-xs text-[var(--muted-foreground,#64748b)]">Generate monthly attendance summaries, student-wise reports, and export to Excel (.xlsx) or CSV.</p>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="downloadMockFile('attendance_report.xlsx')" class="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs">
+              <span>📊</span> Export Excel (.xlsx)
+            </button>
+            <button onclick="downloadMockFile('attendance_summary.csv')" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs">
+              <span>📄</span> Export CSV
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="bg-[var(--card,#ffffff)] border border-[var(--border,#e2e8f0)] rounded-xl p-5 space-y-3">
+            <h3 class="font-bold text-sm text-[var(--foreground,#0f172a)]">Daily Attendance Rate</h3>
+            <div class="text-3xl font-extrabold text-indigo-600">91.2%</div>
+            <p class="text-xs text-[var(--muted-foreground,#64748b)]">Average 44 active attendees daily this week.</p>
+          </div>
+          <div class="bg-[var(--card,#ffffff)] border border-[var(--border,#e2e8f0)] rounded-xl p-5 space-y-3">
+            <h3 class="font-bold text-sm text-[var(--foreground,#0f172a)]">Avg Study Duration</h3>
+            <div class="text-3xl font-extrabold text-emerald-600">6.4 Hrs</div>
+            <p class="text-xs text-[var(--muted-foreground,#64748b)]">Calculated from Check-in to Check-out timestamps.</p>
+          </div>
+          <div class="bg-[var(--card,#ffffff)] border border-[var(--border,#e2e8f0)] rounded-xl p-5 space-y-3">
+            <h3 class="font-bold text-sm text-[var(--foreground,#0f172a)]">Defensible Records</h3>
+            <div class="text-3xl font-extrabold text-violet-600">1,248</div>
+            <p class="text-xs text-[var(--muted-foreground,#64748b)]">Immutable scan logs preserved in SQLite database.</p>
+          </div>
+        </div>
+
+        <!-- Sample Aggregated Report Table -->
+        <div class="bg-[var(--card,#ffffff)] border border-[var(--border,#e2e8f0)] rounded-xl shadow-sm overflow-hidden p-5 space-y-4">
+          <h3 class="font-bold text-sm text-[var(--foreground,#0f172a)]">Student Monthly Attendance Summary (Sample)</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-[var(--background,#f8fafc)] text-[var(--muted-foreground,#64748b)] font-semibold border-b border-[var(--border,#e2e8f0)]">
+                <tr>
+                  <th class="p-3">Student Name</th>
+                  <th class="p-3">Seat</th>
+                  <th class="p-3">Total Days Present</th>
+                  <th class="p-3">Total Study Hours</th>
+                  <th class="p-3">Avg Daily Hours</th>
+                  <th class="p-3">Attendance %</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-[var(--border,#e2e8f0)]">
+                <tr>
+                  <td class="p-3 font-semibold">Rahul Sharma</td>
+                  <td class="p-3 font-mono">A-12</td>
+                  <td class="p-3">28 Days</td>
+                  <td class="p-3 font-mono">182.5 hrs</td>
+                  <td class="p-3 font-mono">6.5 hrs/day</td>
+                  <td class="p-3"><span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded font-bold">96%</span></td>
+                </tr>
+                <tr>
+                  <td class="p-3 font-semibold">Priya Patel</td>
+                  <td class="p-3 font-mono">A-04</td>
+                  <td class="p-3">27 Days</td>
+                  <td class="p-3 font-mono">175.0 hrs</td>
+                  <td class="p-3 font-mono">6.4 hrs/day</td>
+                  <td class="p-3"><span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded font-bold">93%</span></td>
+                </tr>
+                <tr>
+                  <td class="p-3 font-semibold">Amit Roy</td>
+                  <td class="p-3 font-mono">B-02</td>
+                  <td class="p-3">26 Days</td>
+                  <td class="p-3 font-mono">190.2 hrs</td>
+                  <td class="p-3 font-mono">7.3 hrs/day</td>
+                  <td class="p-3"><span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded font-bold">90%</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 7: SETTINGS & BACKUP/RESTORE (PRD FR-09, FR-10) -->
+      <section id="tab-settings" class="tab-content hidden space-y-6">
+        <div>
+          <h2 class="text-xl font-bold text-[var(--foreground,#0f172a)]">System Configuration & Data Safety</h2>
+          <p class="text-xs text-[var(--muted-foreground,#64748b)]">Configure library parameters, duplicate cooldown interval, and manage local backups.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          
+          <!-- Library & Scanner Settings -->
+          <div class="bg-[var(--card,#ffffff)] border border-[var(--border,#e2e8f0)] rounded-xl p-5 space-y-4 shadow-sm">
+            <h3 class="font-bold text-sm text-[var(--foreground,#0f172a)] flex items-center gap-2">
+              <span>🏛️</span> Library & Attendance Policy
+            </h3>
+            
+            <div class="space-y-3 text-xs">
+              <div>
+                <label class="block font-semibold text-[var(--foreground,#334155)] mb-1">Library Name</label>
+                <input type="text" value="Apex Central Study Library" class="w-full bg-[var(--background,#f8fafc)] border border-[var(--border,#cbd5e1)] rounded-lg p-2.5">
+              </div>
+
+              <div>
+                <label class="block font-semibold text-[var(--foreground,#334155)] mb-1">Attendance Mode</label>
+                <select class="w-full bg-[var(--background,#f8fafc)] border border-[var(--border,#cbd5e1)] rounded-lg p-2.5">
+                  <option selected>Two-Way Check-in / Check-out (Recommended MVP)</option>
+                  <option>Single Daily Presence Event</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block font-semibold text-[var(--foreground,#334155)] mb-1">Duplicate Scan Cooldown (Seconds)</label>
+                <input type="number" value="60" class="w-full bg-[var(--background,#f8fafc)] border border-[var(--border,#cbd5e1)] rounded-lg p-2.5">
+                <p class="text-[11px] text-[var(--muted-foreground,#64748b)] mt-1">Prevents accidental double scans when a student holds card in front of camera.</p>
+              </div>
+
+              <div class="pt-2">
+                <button onclick="alert('Settings saved to local SQLite configuration.')" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg">Save Preferences</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Backup & Recovery -->
+          <div class="bg-[var(--card,#ffffff)] border border-[var(--border,#e2e8f0)] rounded-xl p-5 space-y-4 shadow-sm">
+            <h3 class="font-bold text-sm text-[var(--foreground,#0f172a)] flex items-center gap-2">
+              <span>💾</span> Database Backup & Recovery (SQLite)
+            </h3>
+            
+            <div class="space-y-3 text-xs">
+              <div class="p-3 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-lg text-indigo-900 dark:text-indigo-200">
+                <div class="font-semibold mb-1">Offline-First Data Storage</div>
+                <p class="text-[11px]">Database path: <code class="bg-indigo-100 dark:bg-indigo-900/50 px-1 py-0.5 rounded">C:/Users/akash/AppData/Local/LibraryAttendance/data.sqlite</code></p>
+              </div>
+
+              <div class="flex gap-2 pt-1">
+                <button onclick="triggerBackup()" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold flex items-center justify-center gap-2 shadow-xs">
+                  <span>📥</span> Backup Database Now
+                </button>
+                <button onclick="triggerRestore()" class="flex-1 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold flex items-center justify-center gap-2 shadow-xs">
+                  <span>🔄</span> Restore From Backup
+                </button>
+              </div>
+
+              <div class="pt-2">
+                <h4 class="font-semibold text-slate-700 dark:text-slate-300 mb-2">Available Dated Backups:</h4>
+                <ul class="divide-y divide-slate-200 dark:divide-slate-800 text-[11px] font-mono text-slate-600 dark:text-slate-400">
+                  <li class="py-1.5 flex justify-between">
+                    <span>backup_2026_09_01_1600.sqlite</span>
+                    <span class="text-emerald-600">Auto (Daily)</span>
+                  </li>
+                  <li class="py-1.5 flex justify-between">
+                    <span>backup_2026_08_31_2100.sqlite</span>
+                    <span class="text-slate-500">Manual</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- MODAL: ADD / EDIT STUDENT -->
+  <div id="modal-student" class="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-[var(--card,#ffffff)] text-[var(--foreground,#0f172a)] border border-[var(--border,#e2e8f0)] rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+      <div class="flex justify-between items-center pb-2 border-b border-[var(--border,#e2e8f0)]">
+        <h3 class="font-bold text-base text-[var(--foreground,#0f172a)]">Register New Student</h3>
+        <button onclick="closeModal('modal-student')" class="text-slate-400 hover:text-slate-600 font-bold text-lg">&times;</button>
+      </div>
+
+      <form id="student-form" onsubmit="handleSaveStudent(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block font-semibold mb-1">Generated Unique Student ID</label>
+          <input id="form-student-id" type="text" readonly class="w-full bg-slate-100 dark:bg-slate-800 font-mono font-bold text-indigo-600 border border-slate-300 dark:border-slate-700 rounded-lg p-2">
+        </div>
+
+        <div>
+          <label class="block font-semibold mb-1">Full Name *</label>
+          <input id="form-student-name" required placeholder="e.g. Vikas Kumar" class="w-full bg-[var(--background,#f8fafc)] border border-[var(--border,#cbd5e1)] rounded-lg p-2 focus:outline-indigo-500">
+        </div>
+
+        <div>
+          <label class="block font-semibold mb-1">Phone Number (Optional)</label>
+          <input id="form-student-phone" placeholder="e.g. +91 98765 00000" class="w-full bg-[var(--background,#f8fafc)] border border-[var(--border,#cbd5e1)] rounded-lg p-2">
+        </div>
+
+        <div>
+          <label class="block font-semibold mb-1">Assign Study Seat *</label>
+          <select id="form-student-seat" class="w-full bg-[var(--background,#f8fafc)] border border-[var(--border,#cbd5e1)] rounded-lg p-2 font-medium">
+            <option value="A-01">Seat A-01 (Zone A)</option>
+            <option value="A-07">Seat A-07 (Zone A)</option>
+            <option value="B-04">Seat B-04 (Zone B)</option>
+            <option value="B-08">Seat B-08 (Zone B)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block font-semibold mb-1">Notes / Batch (Optional)</label>
+          <input id="form-student-notes" placeholder="UPSC Aspirant / Morning Shift" class="w-full bg-[var(--background,#f8fafc)] border border-[var(--border,#cbd5e1)] rounded-lg p-2">
+        </div>
+
+        <div class="pt-3 flex gap-2">
+          <button type="button" onclick="closeModal('modal-student')" class="flex-1 py-2 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold rounded-lg">Cancel</button>
+          <button type="submit" class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-sm">Save & Generate QR</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: QR CARD VIEW / PRINT PREVIEW (PRD FR-03) -->
+  <div id="modal-qr-card" class="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-[var(--card,#ffffff)] text-[var(--foreground,#0f172a)] border border-[var(--border,#e2e8f0)] rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4 text-center">
+      
+      <div class="flex justify-between items-center pb-2 border-b border-[var(--border,#e2e8f0)]">
+        <h3 class="font-bold text-sm text-[var(--foreground,#0f172a)]">Student QR Pass Card</h3>
+        <button onclick="closeModal('modal-qr-card')" class="text-slate-400 hover:text-slate-600 font-bold text-lg">&times;</button>
+      </div>
+
+      <!-- Printable ID Card Layout -->
+      <div id="printable-qr-card" class="border-2 border-indigo-500 rounded-xl p-5 bg-white text-slate-900 shadow-md space-y-3">
+        <div class="text-xs font-extrabold uppercase tracking-widest text-indigo-700">Apex Study Library</div>
+        <div class="text-[10px] text-slate-500">Student Attendance ID Pass</div>
+        
+        <!-- SVG Generated QR Mockup -->
+        <div class="w-40 h-40 mx-auto bg-slate-50 p-2 rounded-lg border border-slate-200 flex items-center justify-center relative">
+          <!-- QR Matrix Graphic simulation -->
+          <svg class="w-36 h-36" viewBox="0 0 100 100" fill="currentColor">
+            <!-- Corner Finder 1 -->
+            <rect x="5" y="5" width="25" height="25" fill="#1e1b4b" rx="3"/>
+            <rect x="9" y="9" width="17" height="17" fill="#ffffff" rx="1"/>
+            <rect x="13" y="13" width="9" height="9" fill="#4338ca"/>
+            <!-- Corner Finder 2 -->
+            <rect x="70" y="5" width="25" height="25" fill="#1e1b4b" rx="3"/>
+            <rect x="74" y="9" width="17" height="17" fill="#ffffff" rx="1"/>
+            <rect x="78" y="13" width="9" height="9" fill="#4338ca"/>
+            <!-- Corner Finder 3 -->
+            <rect x="5" y="70" width="25" height="25" fill="#1e1b4b" rx="3"/>
+            <rect x="9" y="74" width="17" height="17" fill="#ffffff" rx="1"/>
+            <rect x="13" y="78" width="9" height="9" fill="#4338ca"/>
+            <!-- Data Grid -->
+            <rect x="35" y="10" width="5" height="15" fill="#1e1b4b"/>
+            <rect x="45" y="5" width="10" height="5" fill="#1e1b4b"/>
+            <rect x="45" y="15" width="5" height="15" fill="#1e1b4b"/>
+            <rect x="55" y="10" width="8" height="8" fill="#1e1b4b"/>
+            <rect x="10" y="35" width="15" height="5" fill="#1e1b4b"/>
+            <rect x="10" y="45" width="8" height="10" fill="#1e1b4b"/>
+            <rect x="35" y="35" width="10" height="10" fill="#4338ca"/>
+            <rect x="50" y="35" width="15" height="5" fill="#1e1b4b"/>
+            <rect x="50" y="45" width="8" height="15" fill="#1e1b4b"/>
+            <rect x="65" y="35" width="10" height="10" fill="#1e1b4b"/>
+            <rect x="80" y="35" width="15" height="8" fill="#1e1b4b"/>
+            <rect x="35" y="55" width="15" height="5" fill="#1e1b4b"/>
+            <rect x="35" y="65" width="8" height="15" fill="#1e1b4b"/>
+            <rect x="48" y="65" width="12" height="12" fill="#4338ca"/>
+            <rect x="65" y="55" width="15" height="10" fill="#1e1b4b"/>
+            <rect x="65" y="70" width="10" height="15" fill="#1e1b4b"/>
+            <rect x="80" y="65" width="10" height="10" fill="#1e1b4b"/>
+            <rect x="80" y="80" width="12" height="12" fill="#1e1b4b"/>
+          </svg>
+        </div>
+
+        <div>
+          <div id="card-student-name" class="font-bold text-sm text-slate-900">Rahul Sharma</div>
+          <div id="card-student-seat" class="text-xs font-semibold text-indigo-700">Assigned Desk: Seat A-12</div>
+          <div id="card-student-id" class="text-[11px] font-mono text-slate-500 mt-0.5">Token: LIB-8F4K2M</div>
+        </div>
+      </div>
+
+      <div class="flex gap-2 pt-2">
+        <button onclick="alert('Print Job Sent: Ready to print on standard card printer.')" class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm flex items-center justify-center gap-1.5">
+          <span>🖨️</span> Print Card
+        </button>
+        <button onclick="alert('QR Image saved as PNG format in Pictures/LibraryQRs/')" class="flex-1 py-2 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold rounded-lg">
+          💾 Save PNG
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC & STATE SIMULATION -->
+  <script>
+    // State management
+    const state = {
+      students: [
+        { id: 'LIB-8F4K2M', name: 'Rahul Sharma', phone: '+91 98765 43210', seat: 'A-12', joinDate: '2026-08-01', status: 'ACTIVE', notes: 'UPSC Aspirant', isPresent: true },
+        { id: 'LIB-9G3M1P', name: 'Priya Patel', phone: '+91 98123 45678', seat: 'A-04', joinDate: '2026-08-10', status: 'ACTIVE', notes: 'CA Foundation', isPresent: true },
+        { id: 'LIB-2D8R5W', name: 'Amit Roy', phone: '+91 97654 32109', seat: 'B-02', joinDate: '2026-08-15', status: 'ACTIVE', notes: 'State PSC', isPresent: true },
+        { id: 'LIB-5H2K9Q', name: 'Neha Singh', phone: '+91 99887 76655', seat: 'A-06', joinDate: '2026-08-18', status: 'ACTIVE', notes: 'SSC Exam', isPresent: false },
+        { id: 'LIB-7K1P3X', name: 'Vikram Seth', phone: '+91 91234 56789', seat: 'B-01', joinDate: '2026-08-20', status: 'ACTIVE', notes: 'GATE Study', isPresent: true },
+        { id: 'LIB-3M9Z4L', name: 'Ananya Sen', phone: '+91 93456 78901', seat: 'B-03', joinDate: '2026-08-25', status: 'INACTIVE', notes: 'Course Completed', isPresent: false }
+      ],
+      attendanceLogs: [
+        { id: 'EVT-9041', time: '07:45:12 PM', studentId: 'LIB-8F4K2M', name: 'Rahul Sharma', seat: 'A-12', type: 'CHECK-IN', device: 'Station-01' },
+        { id: 'EVT-9040', time: '07:32:05 PM', studentId: 'LIB-9G3M1P', name: 'Priya Patel', seat: 'A-04', type: 'CHECK-IN', device: 'Station-01' },
+        { id: 'EVT-9039', time: '07:15:40 PM', studentId: 'LIB-2D8R5W', name: 'Amit Roy', seat: 'B-02', type: 'CHECK-IN', device: 'Station-01' },
+        { id: 'EVT-9038', time: '06:50:18 PM', studentId: 'LIB-7K1P3X', name: 'Vikram Seth', seat: 'B-01', type: 'CHECK-IN', device: 'Station-01' },
+        { id: 'EVT-9037', time: '06:12:00 PM', studentId: 'LIB-5H2K9Q', name: 'Neha Singh', seat: 'A-06', type: 'CHECK-OUT', device: 'Station-01' }
+      ],
+      lastScanCooldowns: {}
+    };
+
+    // Tab Navigation
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      const activeContent = document.getElementById('tab-' + tabId);
+      if (activeContent) activeContent.classList.remove('hidden');
+
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.classList.remove('text-indigo-600', 'bg-indigo-50', 'dark:bg-indigo-950/40', 'dark:text-indigo-300');
+        btn.classList.add('text-[var(--muted-foreground,#64748b)]');
+      });
+      const activeNav = document.getElementById('nav-' + tabId);
+      if (activeNav) {
+        activeNav.classList.add('text-indigo-600', 'bg-indigo-50', 'dark:bg-indigo-950/40', 'dark:text-indigo-300');
+        activeNav.classList.remove('text-[var(--muted-foreground,#64748b)]');
+      }
+    }
+
+    // Live Clock
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('live-clock').innerText = now.toLocaleTimeString();
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Render Student Table
+    function renderStudents(list = state.students) {
+      const tbody = document.getElementById('student-table-body');
+      tbody.innerHTML = '';
+
+      list.forEach(std => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition";
+        tr.innerHTML = `
+          <td class="p-3 font-mono font-bold text-indigo-600">${std.id}</td>
+          <td class="p-3 font-semibold text-[var(--foreground,#0f172a)]">${std.name}</td>
+          <td class="p-3 font-mono text-[var(--muted-foreground,#64748b)]">${std.phone}</td>
+          <td class="p-3">
+            <span class="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 font-bold font-mono rounded text-slate-700 dark:text-slate-300">${std.seat}</span>
+          </td>
+          <td class="p-3 font-mono text-slate-500">${std.joinDate}</td>
+          <td class="p-3">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${std.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-slate-100 text-slate-600'}">
+              ${std.status}
+            </span>
+          </td>
+          <td class="p-3 text-right space-x-1.5">
+            <button onclick="viewQrCard('${std.id}')" class="px-2 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-semibold rounded text-[11px]">Show QR</button>
+            <button onclick="toggleStudentStatus('${std.id}')" class="px-2 py-1 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded text-[11px]">
+              ${std.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Filter Students
+    function filterStudents() {
+      const query = document.getElementById('student-search').value.toLowerCase();
+      const status = document.getElementById('student-status-filter').value;
+
+      const filtered = state.students.filter(s => {
+        const matchesQuery = s.name.toLowerCase().includes(query) || s.id.toLowerCase().includes(query) || s.seat.toLowerCase().includes(query);
+        const matchesStatus = status === 'ALL' || s.status === status;
+        return matchesQuery && matchesStatus;
+      });
+      renderStudents(filtered);
+    }
+
+    // Modal Helpers
+    function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+    function openAddStudentModal() {
+      const randomId = 'LIB-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+      document.getElementById('form-student-id').value = randomId;
+      document.getElementById('form-student-name').value = '';
+      document.getElementById('form-student-phone').value = '';
+      document.getElementById('form-student-notes').value = '';
+      openModal('modal-student');
+    }
+
+    function handleSaveStudent(e) {
+      e.preventDefault();
+      const newStudent = {
+        id: document.getElementById('form-student-id').value,
+        name: document.getElementById('form-student-name').value,
+        phone: document.getElementById('form-student-phone').value || 'N/A',
+        seat: document.getElementById('form-student-seat').value,
+        joinDate: new Date().toISOString().split('T')[0],
+        status: 'ACTIVE',
+        notes: document.getElementById('form-student-notes').value,
+        isPresent: false
+      };
+      state.students.unshift(newStudent);
+      renderStudents();
+      renderSeatGrids();
+      closeModal('modal-student');
+      viewQrCard(newStudent.id);
+    }
+
+    function viewQrCard(studentId) {
+      const student = state.students.find(s => s.id === studentId);
+      if (!student) return;
+      document.getElementById('card-student-name').innerText = student.name;
+      document.getElementById('card-student-seat').innerText = 'Assigned Desk: ' + student.seat;
+      document.getElementById('card-student-id').innerText = 'Token: ' + student.id;
+      openModal('modal-qr-card');
+    }
+
+    function toggleStudentStatus(studentId) {
+      const student = state.students.find(s => s.id === studentId);
+      if (student) {
+        student.status = student.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+        renderStudents();
+      }
+    }
+
+    // Render Seat Grids
+    function renderSeatGrids() {
+      const gridA = document.getElementById('seat-grid-zone-a');
+      const gridB = document.getElementById('seat-grid-zone-b');
+      gridA.innerHTML = '';
+      gridB.innerHTML = '';
+
+      for (let i = 1; i <= 24; i++) {
+        const seatCode = `A-${i.toString().padStart(2, '0')}`;
+        const student = state.students.find(s => s.seat === seatCode && s.status === 'ACTIVE');
+        const card = createSeatItem(seatCode, student);
+        gridA.appendChild(card);
+      }
+
+      for (let i = 1; i <= 24; i++) {
+        const seatCode = `B-${i.toString().padStart(2, '0')}`;
+        const student = state.students.find(s => s.seat === seatCode && s.status === 'ACTIVE');
+        const card = createSeatItem(seatCode, student);
+        gridB.appendChild(card);
+      }
+    }
+
+    function createSeatItem(seatCode, student) {
+      const div = document.createElement('div');
+      div.className = "p-3 rounded-xl border text-center transition cursor-pointer flex flex-col justify-between h-24 ";
+
+      if (student && student.isPresent) {
+        // Green: Currently present
+        div.className += "bg-emerald-500/10 border-emerald-500 text-emerald-900 dark:text-emerald-200 shadow-xs";
+        div.innerHTML = `
+          <div class="flex justify-between items-center">
+            <span class="font-mono font-bold text-xs">${seatCode}</span>
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+          </div>
+          <div class="text-xs font-bold truncate">${student.name}</div>
+          <div class="text-[10px] text-emerald-600 font-semibold">● IN STUDY</div>
+        `;
+      } else if (student) {
+        // Indigo: Assigned but currently away
+        div.className += "bg-indigo-50/70 dark:bg-indigo-950/20 border-indigo-300 dark:border-indigo-800 text-indigo-900 dark:text-indigo-200";
+        div.innerHTML = `
+          <div class="flex justify-between items-center">
+            <span class="font-mono font-bold text-xs">${seatCode}</span>
+            <span class="w-2 h-2 rounded-full bg-slate-300"></span>
+          </div>
+          <div class="text-xs font-medium truncate text-slate-700 dark:text-slate-300">${student.name}</div>
+          <div class="text-[10px] text-slate-500">AWAY</div>
+        `;
+      } else {
+        // Gray: Vacant
+        div.className += "bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 text-slate-400";
+        div.innerHTML = `
+          <div class="font-mono font-bold text-xs text-left">${seatCode}</div>
+          <div class="text-xs font-semibold text-slate-400">VACANT</div>
+          <div class="text-[10px] text-indigo-500 hover:underline" onclick="event.stopPropagation(); openAddStudentModal()">+ Assign</div>
+        `;
+      }
+      return div;
+    }
+
+    // Render Recent Scans & Full Logs
+    function renderLogs() {
+      const recentTbody = document.getElementById('dashboard-recent-scans');
+      const fullTbody = document.getElementById('full-attendance-table-body');
+      recentTbody.innerHTML = '';
+      fullTbody.innerHTML = '';
+
+      state.attendanceLogs.slice(0, 5).forEach(log => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="p-2.5 font-mono text-slate-500">${log.time}</td>
+          <td class="p-2.5 font-semibold text-[var(--foreground,#0f172a)]">${log.name}</td>
+          <td class="p-2.5 font-mono font-bold text-indigo-600">${log.seat}</td>
+          <td class="p-2.5">
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${log.type === 'CHECK-IN' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">${log.type}</span>
+          </td>
+          <td class="p-2.5 text-emerald-600 font-semibold">✓ Verified</td>
+        `;
+        recentTbody.appendChild(tr);
+      });
+
+      state.attendanceLogs.forEach(log => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="p-3 text-slate-400 font-bold">${log.id}</td>
+          <td class="p-3 text-slate-600 dark:text-slate-300 font-bold">${log.time}</td>
+          <td class="p-3 text-indigo-600 font-bold">${log.studentId}</td>
+          <td class="p-3 text-slate-900 dark:text-slate-100 font-sans font-semibold">${log.name}</td>
+          <td class="p-3 font-bold text-slate-700 dark:text-slate-300">${log.seat}</td>
+          <td class="p-3">
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${log.type === 'CHECK-IN' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">${log.type}</span>
+          </td>
+          <td class="p-3 text-slate-400">${log.device}</td>
+        `;
+        fullTbody.appendChild(tr);
+      });
+    }
+
+    // SIMULATE SCANNER LOGIC (FR-04, FR-05, FR-06)
+    function simulateScan(token) {
+      if (!token) return;
+      token = token.trim();
+
+      const box = document.getElementById('scan-feedback-box');
+      const icon = document.getElementById('feedback-icon');
+      const title = document.getElementById('feedback-title');
+      const msg = document.getElementById('feedback-msg');
+      const studentCard = document.getElementById('feedback-student-card');
+
+      box.classList.remove('pulse-card');
+      void box.offsetWidth; // trigger reflow
+      box.classList.add('pulse-card');
+
+      // 1. Duplicate cooldown check
+      const now = Date.now();
+      if (state.lastScanCooldowns[token] && (now - state.lastScanCooldowns[token]) < 10000) {
+        // Cooldown warning
+        box.className = "bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-500 rounded-2xl p-5 text-center shadow-md space-y-3";
+        icon.className = "w-14 h-14 mx-auto rounded-full bg-amber-100 text-amber-600 text-2xl flex items-center justify-center font-bold";
+        icon.innerText = "⏳";
+        title.innerText = "DUPLICATE SCAN IGNORED";
+        title.className = "text-xl font-extrabold text-amber-800 dark:text-amber-300";
+        msg.innerText = "Card was already scanned moments ago (Duplicate Protection Active).";
+        return;
+      }
+
+      // 2. Validate Student Token
+      const student = state.students.find(s => s.id === token && s.status === 'ACTIVE');
+
+      if (!student) {
+        // Invalid / Unregistered QR Error
+        box.className = "bg-red-50 dark:bg-red-950/40 border-2 border-red-500 rounded-2xl p-5 text-center shadow-md space-y-3";
+        icon.className = "w-14 h-14 mx-auto rounded-full bg-red-100 text-red-600 text-2xl flex items-center justify-center font-bold";
+        icon.innerText = "✕";
+        title.innerText = "STUDENT NOT RECOGNIZED";
+        title.className = "text-xl font-extrabold text-red-800 dark:text-red-300";
+        msg.innerText = `Token [${token}] is not registered in the local database.`;
+        studentCard.classList.add('hidden');
+        return;
+      }
+
+      // 3. Process Check-in or Check-out
+      studentCard.classList.remove('hidden');
+      state.lastScanCooldowns[token] = now;
+      student.isPresent = !student.isPresent; // toggle presence
+
+      const eventType = student.isPresent ? 'CHECK-IN' : 'CHECK-OUT';
+      const timeStr = new Date().toLocaleTimeString();
+
+      // UI Box formatting
+      box.className = "bg-emerald-50 dark:bg-emerald-950/40 border-2 border-emerald-500 rounded-2xl p-5 text-center shadow-md space-y-3";
+      icon.className = "w-14 h-14 mx-auto rounded-full bg-emerald-100 text-emerald-600 text-2xl flex items-center justify-center font-bold";
+      icon.innerText = "✓";
+      title.innerText = `${eventType} RECORDED`;
+      title.className = "text-xl font-extrabold text-emerald-800 dark:text-emerald-300";
+      msg.innerText = `Timestamp: ${timeStr} • Stored in SQLite`;
+
+      // Update Card info
+      document.getElementById('scan-name').innerText = student.name;
+      document.getElementById('scan-id').innerText = 'ID: ' + student.id;
+      document.getElementById('scan-seat').innerText = 'Seat ' + student.seat;
+      document.getElementById('scan-time').innerText = timeStr;
+      document.getElementById('scan-event-type').innerText = `${eventType} (${student.isPresent ? 'ENTRY' : 'EXIT'})`;
+      document.getElementById('scan-phone').innerText = student.phone;
+
+      // Add to attendance log state
+      const eventId = 'EVT-' + Math.floor(1000 + Math.random() * 9000);
+      state.attendanceLogs.unshift({
+        id: eventId,
+        time: timeStr,
+        studentId: student.id,
+        name: student.name,
+        seat: student.seat,
+        type: eventType,
+        device: 'Station-01'
+      });
+
+      // Update dashboard counts
+      const presentCount = state.students.filter(s => s.isPresent).length;
+      document.getElementById('kpi-present-count').innerText = presentCount;
+      document.getElementById('kpi-scans-count').innerText = state.attendanceLogs.length;
+
+      renderLogs();
+      renderSeatGrids();
+    }
+
+    // Export helpers
+    function exportAttendanceCSV() {
+      let csv = "Event ID,Time,Student ID,Student Name,Seat Snapshot,Event Type,Device\n";
+      state.attendanceLogs.forEach(l => {
+        csv += `"${l.id}","${l.time}","${l.studentId}","${l.name}","${l.seat}","${l.type}","${l.device}"\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `attendance_export_${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+    }
+
+    function downloadMockFile(filename) {
+      alert(`Exporting ${filename}...\nGenerated successfully with SQLite records snapshot.`);
+    }
+
+    function triggerBackup() {
+      alert('Local Backup Completed Successfully!\nCreated: backup_' + new Date().toISOString().replace(/[:.-]/g, '_') + '.sqlite in backup storage directory.');
+    }
+
+    function triggerRestore() {
+      if (confirm('Are you sure you want to restore from backup? A temporary safety snapshot of current data will be created before restoring.')) {
+        alert('Database restored successfully from selected backup.');
+      }
+    }
+
+    // Initial render
+    renderStudents();
+    renderSeatGrids();
+    renderLogs();
+  </script>
+</body>
+</html>
